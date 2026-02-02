@@ -1,0 +1,10 @@
+{
+	"id": "open-in-editor",
+	"name": "Open in Editor",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "Open files and folders in external code editors like VS Code, Cursor, Zed, and more.",
+	"author": "Priyanshu Mallick",
+	"authorUrl": "https://github.com/PriyanshuMallick",
+	"isDesktopOnly": true
+}

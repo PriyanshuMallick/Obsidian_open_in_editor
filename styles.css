@@ -1,0 +1,51 @@
+.open-in-editor-settings .editor-setting-container,
+.open-in-editor-settings .custom-editor-container {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 16px;
+	margin-bottom: 12px;
+}
+
+.open-in-editor-settings .custom-editor-container {
+	background: var(--background-secondary);
+}
+
+.open-in-editor-settings .editor-setting-header {
+	margin-bottom: 12px;
+}
+
+.open-in-editor-settings .editor-command {
+	font-size: 0.9em;
+	color: var(--text-muted);
+	margin-top: 4px;
+}
+
+.open-in-editor-settings .editor-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.open-in-editor-settings .editor-toggle-setting {
+	margin: 0;
+	padding: 6px 0;
+	border: none;
+}
+
+.open-in-editor-settings .editor-toggle-setting .setting-item-info {
+	flex-grow: 1;
+}
+
+.open-in-editor-settings .editor-toggle-setting .setting-item-name {
+	font-weight: normal;
+	font-size: 0.95em;
+}
+
+/* Disabled state for Group toggle when Enable is off */
+.open-in-editor-settings .setting-disabled {
+	opacity: 0.5;
+}
+
+.open-in-editor-settings .setting-disabled .setting-item-name {
+	color: var(--text-muted);
+}
