@@ -12,25 +12,27 @@ Open files and folders in external code editors directly from Obsidian.
 
 ## Installation
 
+### From GitHub Releases (Recommended)
+
+1. Go to [GitHub Releases](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
+2. Download `open-in-editor.zip`
+3. Extract the zip — you'll get `main.js`, `manifest.json`, and `styles.css`
+4. Copy all three files to `<vault>/.obsidian/plugins/open-in-editor/` (create the folder if it doesn't exist)
+5. Reload Obsidian
+6. Enable the plugin in Settings → Community Plugins
+
 ### From Obsidian Community Plugins (Coming Soon)
 
 1. Open Settings → Community Plugins
 2. Browse and search for "Open in Editor"
 3. Install and enable
 
-### Manual Installation
-
-1. Download the latest release from [GitHub Releases](https://github.com/PriyanshuMallick/open-in-editor/releases)
-2. Extract `main.js`, `manifest.json`, and `styles.css` to `<vault>/.obsidian/plugins/open-in-editor/`
-3. Reload Obsidian
-4. Enable the plugin in Settings → Community Plugins
-
 ### Development Installation
 
 1. Clone this repo into `<vault>/.obsidian/plugins/`
    ```bash
    cd <vault>/.obsidian/plugins
-   git clone https://github.com/PriyanshuMallick/open-in-editor.git
+   git clone https://github.com/PriyanshuMallick/Obsidian_open_in_editor.git
    cd open-in-editor
    ```
 2. Install dependencies
