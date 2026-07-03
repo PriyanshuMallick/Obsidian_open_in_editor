@@ -1,7 +1,9 @@
 import {
 	App,
+	loadMermaid,
 	Menu,
 	MenuItem,
+	Modal,
 	Notice,
 	Plugin,
 	PluginSettingTab,
@@ -40,7 +42,32 @@ interface CustomEditorConfig {
 interface PluginSettings {
 	builtInEditors: Record<string, { enabled: boolean; grouped: boolean }>;
 	customEditors: CustomEditorConfig[];
+	mermaidExport: MermaidExportSettings;
 }
+
+type MermaidExportBackground = "transparent" | "solid";
+type MermaidExportTheme = "light" | "dark";
+type MermaidExportScale = 1 | 2 | 3 | 4;
+type MermaidExportFormat = "png" | "svg";
+
+interface MermaidExportSettings {
+	background: MermaidExportBackground;
+	theme: MermaidExportTheme;
+	scale: MermaidExportScale;
+	format: MermaidExportFormat;
+}
+
+interface MermaidDiagramTarget {
+	element: Element;
+	source: string;
+}
+
+const MERMAID_EXPORT_DEFAULTS: MermaidExportSettings = {
+	background: "solid",
+	theme: "light",
+	scale: 4,
+	format: "png",
+};
 
 // ============================================================================
 // Built-in Editors
@@ -59,6 +86,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 		BUILT_IN_EDITORS.map((e) => [e.id, { enabled: false, grouped: false }])
 	),
 	customEditors: [],
+	mermaidExport: { ...MERMAID_EXPORT_DEFAULTS },
 };
 
 // ============================================================================
@@ -67,6 +95,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
 
 export default class OpenInEditorPlugin extends Plugin {
 	settings: PluginSettings;
+	private mermaidSources = new WeakMap<Element, string>();
 
 	async onload() {
 		await this.loadSettings();
@@ -101,6 +130,8 @@ export default class OpenInEditorPlugin extends Plugin {
 
 		// Commands for each enabled editor
 		this.registerEditorCommands();
+
+		this.registerMermaidExporter();
 	}
 
 	registerEditorCommands() {
@@ -123,7 +154,13 @@ export default class OpenInEditorPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const loaded = await this.loadData();
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded);
+		this.settings.mermaidExport = Object.assign(
+			{},
+			MERMAID_EXPORT_DEFAULTS,
+			loaded?.mermaidExport
+		);
 		// Ensure all built-in editors have settings
 		for (const editor of BUILT_IN_EDITORS) {
 			if (!this.settings.builtInEditors[editor.id]) {
@@ -198,6 +235,291 @@ export default class OpenInEditorPlugin extends Plugin {
 		}
 	}
 
+	registerMermaidExporter() {
+		this.registerMarkdownPostProcessor((el, ctx) => {
+			const sectionInfo = ctx.getSectionInfo(el);
+			const source = sectionInfo ? this.extractMermaidSource(sectionInfo.text) : null;
+			if (!source) return;
+
+			this.mermaidSources.set(el, source);
+			this.tagMermaidElements(el, source);
+			window.setTimeout(() => this.tagMermaidElements(el, source), 50);
+			window.setTimeout(() => this.tagMermaidElements(el, source), 250);
+		}, 100);
+
+		this.registerDomEvent(document, "contextmenu", (evt: MouseEvent) => {
+			const target = this.getMermaidDiagramTarget(evt);
+			if (!target) return;
+
+			evt.preventDefault();
+			evt.stopPropagation();
+
+			const menu = Menu.forEvent(evt);
+			menu.addItem((item) => {
+				item
+					.setTitle("Export Mermaid Diagram")
+					.setIcon("image")
+					.onClick(() => {
+						new MermaidExportModal(this.app, this, target.source).open();
+					});
+			});
+			menu.showAtMouseEvent(evt);
+		});
+	}
+
+	extractMermaidSource(sectionText: string): string | null {
+		const fenceMatch = sectionText.match(/^\s*```\s*mermaid[^\n]*\n([\s\S]*?)\n\s*```\s*$/m);
+		if (fenceMatch?.[1]?.trim()) {
+			return fenceMatch[1].trim();
+		}
+
+		const colonMatch = sectionText.match(/^\s*:::\s*mermaid[^\n]*\n([\s\S]*?)\n\s*:::\s*$/m);
+		if (colonMatch?.[1]?.trim()) {
+			return colonMatch[1].trim();
+		}
+
+		return null;
+	}
+
+	findMermaidElements(root: HTMLElement): Element[] {
+		const elements = new Set<Element>();
+		for (const selector of [
+			".mermaid",
+			".block-language-mermaid",
+			".mermaid svg",
+			".block-language-mermaid svg",
+		]) {
+			for (const el of Array.from(root.querySelectorAll(selector))) {
+				elements.add(el);
+			}
+		}
+		return Array.from(elements);
+	}
+
+	tagMermaidElements(root: HTMLElement, source: string) {
+		for (const diagramEl of this.findMermaidElements(root)) {
+			this.mermaidSources.set(diagramEl, source);
+		}
+	}
+
+	getMermaidDiagramTarget(evt: MouseEvent): MermaidDiagramTarget | null {
+		const eventTarget = evt.target;
+		if (!(eventTarget instanceof Element)) return null;
+
+		const diagramEl = eventTarget.closest(".mermaid, .block-language-mermaid");
+		if (!diagramEl) return null;
+
+		const candidates: Element[] = [];
+		let current: Element | null = eventTarget;
+		while (current && current !== document.body) {
+			candidates.push(current);
+			current = current.parentElement;
+		}
+
+		for (const candidate of candidates) {
+			const source = this.mermaidSources.get(candidate);
+			if (source) {
+				return { element: candidate, source };
+			}
+		}
+
+		const source = this.mermaidSources.get(diagramEl);
+		return source ? { element: diagramEl, source } : null;
+	}
+
+	getMermaidExportDefaults(): MermaidExportSettings {
+		return { ...MERMAID_EXPORT_DEFAULTS, ...this.settings.mermaidExport };
+	}
+
+	async exportMermaidDiagram(source: string, options: MermaidExportSettings) {
+		try {
+			const svg = await this.renderMermaidSvg(source, options);
+			const filename = this.createMermaidExportFilename(options.format);
+
+			if (options.format === "svg") {
+				this.downloadBlob(svg, "image/svg+xml;charset=utf-8", filename);
+			} else {
+				const blob = await this.renderSvgToPngBlob(svg, options);
+				this.downloadBlob(blob, "image/png", filename);
+			}
+
+			new Notice(`Exported Mermaid diagram as ${options.format.toUpperCase()}`);
+		} catch (error) {
+			console.error("Failed to export Mermaid diagram:", error);
+			new Notice(`Failed to export Mermaid diagram: ${this.getErrorMessage(error)}`);
+		}
+	}
+
+	async renderMermaidSvg(source: string, options: MermaidExportSettings): Promise<string> {
+		const mermaid = await loadMermaid();
+		const theme = options.theme === "dark" ? "dark" : "default";
+
+		mermaid.initialize({
+			startOnLoad: false,
+			theme,
+			securityLevel: "strict",
+		});
+
+		if (typeof mermaid.parse === "function") {
+			await mermaid.parse(source);
+		}
+
+		const id = `open-in-editor-mermaid-export-${Date.now()}-${Math.random()
+			.toString(36)
+			.slice(2)}`;
+		const { svg } = await mermaid.render(id, source);
+		return this.prepareSvgForExport(svg, options);
+	}
+
+	prepareSvgForExport(svgText: string, options: MermaidExportSettings): string {
+		const parser = new DOMParser();
+		const doc = parser.parseFromString(svgText, "image/svg+xml");
+		const parserError = doc.querySelector("parsererror");
+		if (parserError) {
+			throw new Error("Rendered SVG could not be parsed.");
+		}
+
+		const svg = doc.documentElement;
+		if (svg.tagName.toLowerCase() !== "svg") {
+			throw new Error("Mermaid did not return an SVG.");
+		}
+
+		svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+		if (options.background === "transparent") {
+			svg.style.backgroundColor = "transparent";
+			svg.setAttribute("style", this.removeBackgroundFromStyle(svg.getAttribute("style") ?? ""));
+		} else {
+			svg.style.backgroundColor = this.getSolidBackgroundColor(options.theme);
+		}
+
+		return new XMLSerializer().serializeToString(svg);
+	}
+
+	async renderSvgToPngBlob(
+		svgText: string,
+		options: MermaidExportSettings
+	): Promise<Blob> {
+		const image = await this.loadSvgImage(svgText);
+		const dimensions = this.getSvgDimensions(svgText, image);
+		const canvas = document.createElement("canvas");
+		canvas.width = Math.ceil(dimensions.width * options.scale);
+		canvas.height = Math.ceil(dimensions.height * options.scale);
+
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			throw new Error("Could not create a canvas context.");
+		}
+
+		if (options.background === "solid") {
+			ctx.fillStyle = this.getSolidBackgroundColor(options.theme);
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+		}
+
+		ctx.setTransform(options.scale, 0, 0, options.scale, 0, 0);
+		ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+
+		return new Promise((resolve, reject) => {
+			canvas.toBlob((blob) => {
+				if (blob) {
+					resolve(blob);
+				} else {
+					reject(new Error("Could not create a PNG from the rendered diagram."));
+				}
+			}, "image/png");
+		});
+	}
+
+	loadSvgImage(svgText: string): Promise<HTMLImageElement> {
+		return new Promise((resolve, reject) => {
+			const image = new Image();
+			const url = URL.createObjectURL(
+				new Blob([svgText], { type: "image/svg+xml;charset=utf-8" })
+			);
+
+			image.onload = () => {
+				URL.revokeObjectURL(url);
+				resolve(image);
+			};
+			image.onerror = () => {
+				URL.revokeObjectURL(url);
+				reject(new Error("Could not load the rendered SVG for PNG export."));
+			};
+			image.src = url;
+		});
+	}
+
+	getSvgDimensions(svgText: string, image: HTMLImageElement): { width: number; height: number } {
+		const parser = new DOMParser();
+		const doc = parser.parseFromString(svgText, "image/svg+xml");
+		const svg = doc.documentElement;
+		const width = this.parseSvgLength(svg.getAttribute("width"));
+		const height = this.parseSvgLength(svg.getAttribute("height"));
+		if (width > 0 && height > 0) {
+			return { width, height };
+		}
+
+		const viewBox = svg.getAttribute("viewBox")?.split(/\s+/).map(Number);
+		if (viewBox && viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
+			return { width: viewBox[2], height: viewBox[3] };
+		}
+
+		return {
+			width: image.naturalWidth || image.width,
+			height: image.naturalHeight || image.height,
+		};
+	}
+
+	parseSvgLength(value: string | null): number {
+		if (!value) return 0;
+		const parsed = Number.parseFloat(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+
+	removeBackgroundFromStyle(style: string): string {
+		return style
+			.split(";")
+			.map((part) => part.trim())
+			.filter((part) => part && !part.toLowerCase().startsWith("background"))
+			.join("; ");
+	}
+
+	getSolidBackgroundColor(theme: MermaidExportTheme): string {
+		return theme === "dark" ? "#1f2020" : "#ffffff";
+	}
+
+	downloadBlob(data: BlobPart | Blob, mimeType: string, filename: string) {
+		const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
+
+	createMermaidExportFilename(format: MermaidExportFormat): string {
+		const activeFile = this.app.workspace.getActiveFile();
+		const baseName = activeFile?.basename ?? "mermaid-diagram";
+		const timestamp = new Date()
+			.toISOString()
+			.replace(/[:.]/g, "-")
+			.replace("T", "-")
+			.slice(0, 19);
+		return `${baseName}-mermaid-${timestamp}.${format}`;
+	}
+
+	getErrorMessage(error: unknown): string {
+		if (error instanceof Error && error.message) {
+			return error.message;
+		}
+		if (typeof error === "string") {
+			return error;
+		}
+		return "Unknown error";
+	}
+
 	async openInEditor(editor: EditorConfig, file: TAbstractFile | null) {
 		try {
 			let filePath: string;
@@ -235,6 +557,116 @@ export default class OpenInEditorPlugin extends Plugin {
 	}
 
 	onunload() {}
+}
+
+// ============================================================================
+// Mermaid Export Modal
+// ============================================================================
+
+class MermaidExportModal extends Modal {
+	private plugin: OpenInEditorPlugin;
+	private source: string;
+	private options: MermaidExportSettings;
+
+	constructor(app: App, plugin: OpenInEditorPlugin, source: string) {
+		super(app);
+		this.plugin = plugin;
+		this.source = source;
+		this.options = plugin.getMermaidExportDefaults();
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		this.setTitle("Export Mermaid Diagram");
+
+		contentEl.addClass("mermaid-export-modal");
+
+		new Setting(contentEl)
+			.setName("Format")
+			.setDesc("Choose the output image format.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						png: "PNG",
+						svg: "SVG",
+					})
+					.setValue(this.options.format)
+					.onChange((value) => {
+						this.options.format = value as MermaidExportFormat;
+					})
+			);
+
+		new Setting(contentEl)
+			.setName("Background")
+			.setDesc("Use a transparent background or a solid theme background.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						solid: "Solid",
+						transparent: "Transparent",
+					})
+					.setValue(this.options.background)
+					.onChange((value) => {
+						this.options.background = value as MermaidExportBackground;
+					})
+			);
+
+		new Setting(contentEl)
+			.setName("Theme")
+			.setDesc("Render the diagram with Mermaid's light or dark theme.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						light: "Light",
+						dark: "Dark",
+					})
+					.setValue(this.options.theme)
+					.onChange((value) => {
+						this.options.theme = value as MermaidExportTheme;
+					})
+			);
+
+		new Setting(contentEl)
+			.setName("Scale")
+			.setDesc("PNG pixel density. SVG exports remain vector-based.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						"1": "1x",
+						"2": "2x",
+						"3": "3x",
+						"4": "4x",
+					})
+					.setValue(String(this.options.scale))
+					.onChange((value) => {
+						this.options.scale = Number(value) as MermaidExportScale;
+					})
+			);
+
+		const controls = contentEl.createDiv({ cls: "mermaid-export-modal-controls" });
+		new Setting(controls)
+			.addButton((btn) =>
+				btn
+					.setButtonText("Cancel")
+					.onClick(() => {
+						this.close();
+					})
+			)
+			.addButton((btn) =>
+				btn
+					.setButtonText("Export")
+					.setCta()
+					.onClick(async () => {
+						this.close();
+						await this.plugin.exportMermaidDiagram(this.source, this.options);
+					})
+			);
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
 }
 
 // ============================================================================
@@ -294,12 +726,93 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 			this.createCustomEditorSetting(containerEl, i);
 		}
 
+		// Mermaid Export
+		containerEl.createEl("h2", { text: "Mermaid Export" });
+		containerEl.createEl("p", {
+			text: "Defaults used when exporting a rendered Mermaid diagram from the context menu.",
+			cls: "setting-item-description",
+		});
+
+		this.createMermaidExportSettings(containerEl);
+
 		// Help
 		containerEl.createEl("h2", { text: "Help" });
 		containerEl.createEl("p", {
 			text: 'When "Group" is enabled, the editor appears under an "Open in External Editor" submenu. For macOS, the App Name should match the application name exactly (e.g., "Visual Studio Code", "Sublime Text").',
 			cls: "setting-item-description",
 		});
+	}
+
+	createMermaidExportSettings(containerEl: HTMLElement) {
+		const container = containerEl.createDiv({ cls: "mermaid-export-settings-container" });
+
+		new Setting(container)
+			.setName("Default format")
+			.setDesc("The initially selected image format in the export dialog.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						png: "PNG",
+						svg: "SVG",
+					})
+					.setValue(this.plugin.settings.mermaidExport.format)
+					.onChange(async (value) => {
+						this.plugin.settings.mermaidExport.format = value as MermaidExportFormat;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(container)
+			.setName("Default background")
+			.setDesc("The initially selected background in the export dialog.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						solid: "Solid",
+						transparent: "Transparent",
+					})
+					.setValue(this.plugin.settings.mermaidExport.background)
+					.onChange(async (value) => {
+						this.plugin.settings.mermaidExport.background =
+							value as MermaidExportBackground;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(container)
+			.setName("Default theme")
+			.setDesc("The initially selected theme in the export dialog.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						light: "Light",
+						dark: "Dark",
+					})
+					.setValue(this.plugin.settings.mermaidExport.theme)
+					.onChange(async (value) => {
+						this.plugin.settings.mermaidExport.theme = value as MermaidExportTheme;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(container)
+			.setName("Default PNG scale")
+			.setDesc("The initially selected pixel density for PNG exports.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions({
+						"1": "1x",
+						"2": "2x",
+						"3": "3x",
+						"4": "4x",
+					})
+					.setValue(String(this.plugin.settings.mermaidExport.scale))
+					.onChange(async (value) => {
+						this.plugin.settings.mermaidExport.scale =
+							Number(value) as MermaidExportScale;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 
 	createBuiltInEditorSetting(

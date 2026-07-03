@@ -1,85 +1,105 @@
-# Open in Editor
+<div align="center">
 
-Open files and folders in external code editors directly from Obsidian.
+# 🚀 Open in Editor
 
-## Features
+**Open files and folders from Obsidian in your favorite external code editor — one right-click away.**
 
-- **Context menu integration** - Right-click on files, folders, or editor tabs to open in your favorite editor
-- **Built-in editor support** - Pre-configured for VS Code, Cursor, Zed, Windsurf, and Antygravity
-- **Custom editors** - Add any editor with custom commands and arguments
-- **Flexible menu options** - Group editors in a submenu or show them directly in context menus
-- **Command palette** - Quick commands for each enabled editor
+[![Release](https://img.shields.io/github/v/release/PriyanshuMallick/Obsidian_open_in_editor?style=flat-square&label=release)](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/PriyanshuMallick/Obsidian_open_in_editor/total?style=flat-square)](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases)
+[![License](https://img.shields.io/github/license/PriyanshuMallick/Obsidian_open_in_editor?style=flat-square)](LICENSE)
+[![Obsidian](https://img.shields.io/badge/Obsidian-Plugin-7C3AED?style=flat-square&logo=obsidian&logoColor=white)](https://obsidian.md)
 
-## Installation
+</div>
+
+---
+
+Obsidian is great for writing, but sometimes you need a real code editor. **Open in Editor** adds a context-menu entry to files, folders, and editor tabs so you can jump straight into **VS Code, Cursor, Zed, Windsurf, Antigravity** — or any editor you configure.
+
+## 💡 Why I built this
+
+Editing in Obsidian gets tedious once you want the power of a real code editor. Things a code editor does far better:
+
+- **Multi-cursor / multi-line edits** — `Cmd/Ctrl + Opt/Alt + ↓` to select multiple lines and edit them all at once
+- **Bulk special tags or numbering** across many lines in one pass
+- **Inline tab auto-complete**
+
+I also just prefer editing in an editor — that's where I feel most at home. So instead of fighting the note pane, this plugin lets me pop any note straight into the editor and get back to Obsidian when done.
+
+## ✨ Features
+
+- 🖱️ **Context menu integration** — Right-click any file, folder, or editor tab to open it externally
+- 📦 **Built-in editor support** — Pre-configured for **VS Code, Cursor, Zed, Windsurf, and Antigravity**
+- 🛠️ **Custom editors** — Add any editor with your own command and arguments
+- 🗂️ **Flexible menus** — Group editors under a submenu, or show them directly in the context menu
+- ⌨️ **Command palette** — A quick command for each enabled editor
+
+## 📥 Installation
 
 ### From GitHub Releases (Recommended)
 
-1. Go to [GitHub Releases](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
+1. Go to the [**latest release**](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
 2. Download `open-in-editor.zip`
-3. Extract the zip — you'll get `main.js`, `manifest.json`, and `styles.css`
-4. Copy all three files to `<vault>/.obsidian/plugins/open-in-editor/` (create the folder if it doesn't exist)
+3. Extract it — you'll get `main.js`, `manifest.json`, and `styles.css`
+4. Copy all three files into `<vault>/.obsidian/plugins/open-in-editor/` (create the folder if it doesn't exist)
 5. Reload Obsidian
-6. Enable the plugin in Settings → Community Plugins
+6. Enable the plugin in **Settings → Community Plugins**
+
+> 💡 Prefer the individual files? Each release also ships `main.js`, `manifest.json`, and `styles.css` as separate downloads.
 
 ### From Obsidian Community Plugins (Coming Soon)
 
-1. Open Settings → Community Plugins
-2. Browse and search for "Open in Editor"
+1. Open **Settings → Community Plugins**
+2. Browse and search for **"Open in Editor"**
 3. Install and enable
 
 ### Development Installation
 
-1. Clone this repo into `<vault>/.obsidian/plugins/`
-   ```bash
-   cd <vault>/.obsidian/plugins
-   git clone https://github.com/PriyanshuMallick/Obsidian_open_in_editor.git
-   cd open-in-editor
-   ```
-2. Install dependencies
-   ```bash
-   bun install
-   ```
-3. Build the plugin
-   ```bash
-   ./build.sh
-   ```
-4. Reload Obsidian and enable the plugin
+```bash
+cd <vault>/.obsidian/plugins
+git clone https://github.com/PriyanshuMallick/Obsidian_open_in_editor.git open-in-editor
+cd open-in-editor
+bun install
+./build.sh
+```
 
-## Usage
+Then reload Obsidian and enable the plugin.
 
-### Enabling Editors
+## 🚦 Usage
 
-1. Go to Settings → Open in Editor
-2. Enable the editors you want to use
-3. Optionally enable "Group in submenu" to organize editors under a submenu
+### Enable your editors
 
-### Opening Files
+1. Go to **Settings → Open in Editor**
+2. Toggle on the editors you want
+3. Optionally enable **"Group in submenu"** to tuck them under a single menu entry
 
-- **File Explorer**: Right-click on any file or folder
-- **Editor Tab**: Right-click on the tab of an open file
-- **Command Palette**: Use `Ctrl/Cmd + P` and search for "Open in [Editor]"
+### Open a file or folder
 
-### Custom Editors
+| Where | How |
+|-------|-----|
+| **File Explorer** | Right-click any file or folder |
+| **Editor Tab** | Right-click the tab of an open file |
+| **Command Palette** | `Ctrl/Cmd + P` → search **"Open in [Editor]"** |
 
-Add your own editors with custom commands:
+### Custom editors
 
-1. Go to Settings → Open in Editor → Custom Editors
-2. Click "Add Custom Editor"
-3. Fill in:
-   - **Name**: Display name for your editor
-   - **Command**: Executable command (e.g., `vim`, `/usr/local/bin/subl`)
-   - **Arguments**: Optional arguments (use `${file}` for file path, `${folder}` for vault path)
-4. Enable the editor
+Add your own editor in **Settings → Open in Editor → Custom Editors**:
 
-**Example custom editors:**
+1. Click **Add Custom Editor**
+2. Fill in:
+   - **Name** — display name
+   - **Command** — executable (e.g. `vim`, `/usr/local/bin/subl`)
+   - **Arguments** — optional; use `${file}` for the file path, `${folder}` for the vault path
+3. Enable it
 
-- **Sublime Text**: Command: `subl`, Arguments: `${file}`
-- **Neovim**: Command: `nvim`, Arguments: `${file}`
-- **IntelliJ IDEA**: Command: `idea`, Arguments: `${file}`
+**Examples**
 
-## Development
+| Editor | Command | Arguments |
+|--------|---------|-----------|
+| Sublime Text | `subl` | `${file}` |
+| Neovim | `nvim` | `${file}` |
+| IntelliJ IDEA | `idea` | `${file}` |
 
-### Building
+## 🧑‍💻 Development
 
 ```bash
 # Production build
@@ -89,33 +109,31 @@ Add your own editors with custom commands:
 bun run dev
 ```
 
-### Requirements
+**Requirements**
 
-- [Bun](https://bun.sh/) installed
-- Node.js v16 or higher (for Obsidian plugin development)
+- [Bun](https://bun.sh/)
+- Node.js v16 or higher
 
-## License
+> ⚠️ This is a **desktop-only** plugin — it launches native editors and won't run on Obsidian Mobile.
 
-MIT
+## 📝 Changelog
 
-## Author
-
-**Priyanshu Mallick**
-[GitHub](https://github.com/PriyanshuMallick)
-
-## Support
-
-If you find this plugin useful, consider:
-- Starring the repo on GitHub
-- Reporting issues or suggesting features
-- Contributing improvements
-
-## Changelog
-
-### 1.0.0 (Initial Release)
+### 1.0.0 — Initial Release
 
 - Context menu integration for files, folders, and editor tabs
-- Built-in support for VS Code, Cursor, Zed, Windsurf, and Antygravity
+- Built-in support for VS Code, Cursor, Zed, Windsurf, and Antigravity
 - Custom editor configuration
 - Menu grouping options
 - Command palette integration
+
+## 🤝 Support
+
+If you find this plugin useful:
+
+- ⭐ Star the repo on GitHub
+- 🐛 Report issues or suggest features
+- 🔧 Contribute improvements via PR
+
+## 📄 License
+
+[MIT](LICENSE) © **Priyanshu Mallick** · [GitHub](https://github.com/PriyanshuMallick)

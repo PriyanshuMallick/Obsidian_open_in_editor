@@ -1,5 +1,6 @@
 .open-in-editor-settings .editor-setting-container,
-.open-in-editor-settings .custom-editor-container {
+.open-in-editor-settings .custom-editor-container,
+.open-in-editor-settings .mermaid-export-settings-container {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 8px;
 	padding: 16px;
@@ -48,4 +49,13 @@
 
 .open-in-editor-settings .setting-disabled .setting-item-name {
 	color: var(--text-muted);
+}
+
+.mermaid-export-modal-controls {
+	margin-top: 16px;
+}
+
+.mermaid-export-modal-controls .setting-item {
+	border: none;
+	padding-bottom: 0;
 }
