@@ -78,7 +78,7 @@ const BUILT_IN_EDITORS: Omit<EditorConfig, "enabled" | "grouped">[] = [
 	{ id: "cursor", name: "Cursor", appName: "Cursor", command: "cursor", isBuiltIn: true },
 	{ id: "zed", name: "Zed", appName: "Zed", command: "zed", isBuiltIn: true },
 	{ id: "windsurf", name: "Windsurf", appName: "Windsurf", command: "windsurf", isBuiltIn: true },
-	{ id: "antygravity", name: "Antygravity", appName: "Antygravity", command: "antygravity", isBuiltIn: true },
+	{ id: "antigravity", name: "Antigravity", appName: "Antigravity", command: "antigravity", isBuiltIn: true },
 ];
 
 const DEFAULT_SETTINGS: PluginSettings = {
