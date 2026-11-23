@@ -1,5 +1,6 @@
 import {
 	App,
+	FileSystemAdapter,
 	Menu,
 	MenuItem,
 	Notice,
@@ -7,12 +8,10 @@ import {
 	PluginSettingTab,
 	Setting,
 	TAbstractFile,
-	TFile,
 } from "obsidian";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { delimiter, join } from "node:path";
 
 // ============================================================================
 // Types
@@ -189,7 +188,7 @@ export default class OpenInEditorPlugin extends Plugin {
 		if (groupedEditors.length > 0) {
 			menu.addItem((item: MenuItem) => {
 				item.setTitle("Open in External Editor").setIcon("code");
-				const submenu = (item as any).setSubmenu() as Menu;
+				const submenu = (item as MenuItem & { setSubmenu(): Menu }).setSubmenu();
 				for (const editor of groupedEditors) {
 					submenu.addItem((subItem: MenuItem) => {
 						subItem
@@ -204,31 +203,29 @@ export default class OpenInEditorPlugin extends Plugin {
 
 	async openInEditor(editor: EditorConfig, file: TAbstractFile | null) {
 		try {
-			let filePath: string;
-			if (file && file instanceof TFile) {
-				filePath = this.app.vault.adapter.getFullPath(file.path);
-			} else if (file) {
-				// It's a folder
-				filePath = this.app.vault.adapter.getFullPath(file.path);
-			} else {
-				// No file, open vault root
-				filePath = (this.app.vault.adapter as any).basePath;
-			}
+			const adapter = this.app.vault.adapter;
+			if (!(adapter instanceof FileSystemAdapter)) throw new Error("A local vault is required.");
+			const filePath = file ? adapter.getFullPath(file.path) : adapter.getBasePath();
+			const isMac = process.platform === "darwin";
+			const isWindows = process.platform === "win32";
+			const executable = isMac ? "/usr/bin/open" : this.getEditorExecutable(editor);
+			const args = isMac ? ["-a", editor.appName, filePath] : [filePath];
 
-			let command: string;
-
-			if (process.platform === "darwin") {
-				// macOS: Use 'open -a' to open with specified app
-				command = `open -a "${editor.appName}" "${filePath}"`;
-			} else if (process.platform === "win32") {
-				// Windows: Use 'start' command or direct path
-				command = `"${editor.command}" "${filePath}"`;
-			} else {
-				// Linux: Use the command directly
-				command = `${editor.command} "${filePath}"`;
-			}
-
-			await execAsync(command);
+			await new Promise<void>((resolve, reject) => {
+				const child = spawn(executable, args, { detached: isWindows, stdio: "ignore", windowsHide: true });
+				child.once("error", reject);
+				if (isWindows) {
+					child.once("spawn", () => {
+						child.unref();
+						resolve();
+					});
+				} else {
+					child.once("exit", (code) => {
+						if (code === 0) resolve();
+						else reject(new Error("The editor launcher failed."));
+					});
+				}
+			});
 			new Notice(`Opening in ${editor.name}`);
 		} catch (error) {
 			console.error(`Error opening in ${editor.name}:`, error);
@@ -238,7 +235,22 @@ export default class OpenInEditorPlugin extends Plugin {
 		}
 	}
 
-	onunload() {}
+	private getEditorExecutable(editor: EditorConfig): string {
+		if (process.platform !== "win32" || !editor.isBuiltIn) return editor.command;
+
+		// Some Windows installers put a .cmd wrapper in PATH and the executable above it.
+		const name = editor.id === "vscode" ? "Code.exe" : `${editor.appName}.exe`;
+		for (const entry of (process.env.PATH ?? "").split(delimiter)) {
+			const directory = entry.replace(/^"|"$/g, "");
+			if (!directory) continue;
+			const direct = join(directory, `${editor.command}.exe`);
+			if (existsSync(direct)) return direct;
+			if (!existsSync(join(directory, `${editor.command}.cmd`))) continue;
+			const executable = join(directory, "..", name);
+			if (existsSync(executable)) return executable;
+		}
+		return editor.command;
+	}
 }
 
 // ============================================================================
@@ -251,6 +263,37 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: OpenInEditorPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	getSettingDefinitions() {
+		return [
+			...BUILT_IN_EDITORS.map((editor) => ({
+				name: editor.name,
+				aliases: ["Enable editor", "Group editor"],
+				render: (setting: Setting) => {
+					setting.setClass("open-in-editor-editor-row");
+					this.createBuiltInEditorSetting(setting.settingEl.createDiv("open-in-editor-settings"), editor);
+				},
+			})),
+			{
+				name: "Add custom editor",
+				render: (setting: Setting) => this.addCustomEditorButton(setting),
+			},
+			...this.plugin.settings.customEditors.map((editor, index) => ({
+				name: `Custom editor: ${editor.name} (${index + 1})`,
+				aliases: ["Display name", "App name", "Editor command", "Enable editor", "Group editor", "Delete editor"],
+				render: (setting: Setting) => {
+					setting.setClass("open-in-editor-editor-row");
+					this.createCustomEditorSetting(setting.settingEl.createDiv("open-in-editor-settings"), index);
+				},
+			})),
+		];
+	}
+
+	private refreshSettings() {
+		const tab = this as this & { update?: () => void };
+		if (tab.update) tab.update();
+		else this.display();
 	}
 
 	display(): void {
@@ -276,7 +319,22 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 			cls: "setting-item-description",
 		});
 
-		new Setting(containerEl).addButton((btn) =>
+		this.addCustomEditorButton(new Setting(containerEl));
+
+		for (let i = 0; i < this.plugin.settings.customEditors.length; i++) {
+			this.createCustomEditorSetting(containerEl, i);
+		}
+
+		// Help
+		new Setting(containerEl).setName("Help").setHeading();
+		containerEl.createEl("p", {
+			text: 'When "Group" is enabled, the editor appears under an "Open in External Editor" submenu. For macOS, the App Name should match the application name exactly (e.g., "Visual Studio Code", "Sublime Text").',
+			cls: "setting-item-description",
+		});
+	}
+
+	private addCustomEditorButton(setting: Setting) {
+		setting.addButton((btn) =>
 			btn
 				.setButtonText("Add Custom Editor")
 				.setCta()
@@ -290,20 +348,9 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 						grouped: false,
 					});
 					await this.plugin.saveSettings();
-					this.display();
+					this.refreshSettings();
 				})
 		);
-
-		for (let i = 0; i < this.plugin.settings.customEditors.length; i++) {
-			this.createCustomEditorSetting(containerEl, i);
-		}
-
-		// Help
-		new Setting(containerEl).setName("Help").setHeading();
-		containerEl.createEl("p", {
-			text: 'When "Group" is enabled, the editor appears under an "Open in External Editor" submenu. For macOS, the App Name should match the application name exactly (e.g., "Visual Studio Code", "Sublime Text").',
-			cls: "setting-item-description",
-		});
 	}
 
 	createBuiltInEditorSetting(
@@ -331,7 +378,7 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 						this.plugin.settings.builtInEditors[editor.id].enabled = value;
 						await this.plugin.saveSettings();
 						// Re-render to update Group toggle state
-						this.display();
+						this.refreshSettings();
 					})
 			);
 
@@ -389,7 +436,7 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 		// Command (for Windows/Linux)
 		new Setting(container)
 			.setName("Command (Windows/Linux)")
-			.setDesc("CLI command for non-macOS systems")
+			.setDesc("Executable path or name. Use an .exe on Windows.")
 			.addText((text) =>
 				text
 					.setPlaceholder("e.g., subl, idea")
@@ -413,7 +460,7 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 						this.plugin.settings.customEditors[index].enabled = value;
 						await this.plugin.saveSettings();
 						// Re-render to update Group toggle state
-						this.display();
+						this.refreshSettings();
 					})
 			);
 
@@ -446,7 +493,7 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						this.plugin.settings.customEditors.splice(index, 1);
 						await this.plugin.saveSettings();
-						this.display();
+						this.refreshSettings();
 					})
 			);
 	}

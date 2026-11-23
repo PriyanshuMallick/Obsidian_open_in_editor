@@ -20,7 +20,7 @@ Open an Obsidian note or folder in VS Code, Cursor, Zed, Windsurf, or Antigravit
 
 Enable an editor under **Settings → Open in Editor**. Then right-click a file or folder in the file explorer, or an open note’s tab, and choose **Open in [editor name]**. You can also open the current file from the command palette. If you just enabled an editor, reload the plugin to refresh its palette commands.
 
-Enable **Group** for an editor to move its entry into the **Open in External Editor** submenu. To use another editor, choose **Add Custom Editor** and enter its application name on macOS or its executable command on Windows or Linux.
+Enable **Group** for an editor to move its entry into the **Open in External Editor** submenu. To use another editor, choose **Add Custom Editor** and enter its application name on macOS or its executable command on Windows or Linux. For a custom editor on Windows, point to the .exe file.
 
 ## Development
 

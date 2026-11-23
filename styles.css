@@ -49,3 +49,7 @@
 .open-in-editor-settings .setting-disabled .setting-item-name {
 	color: var(--text-muted);
 }
+
+.setting-item.open-in-editor-editor-row {
+	display: block;
+}
