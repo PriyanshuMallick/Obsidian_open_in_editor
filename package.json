@@ -19,7 +19,7 @@
 		"esbuild": "^0.24.0",
 		"obsidian": "latest"
 	},
-	"dependencies": {
-		"shell-path": "^3.1.0"
+	"overrides": {
+		"moment": "2.31.0"
 	}
 }
