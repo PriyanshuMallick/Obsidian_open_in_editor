@@ -1,7 +1,7 @@
 # Open in Editor
 
 <p align="center">
-  <img src="assets/cover.png" width="712" alt="Open in Editor cover showing the external editor menu">
+  <img src="assets/cover.png" alt="Open in Editor cover showing the external editor menu">
 </p>
 
 Open notes and folders from Obsidian in VS Code, Cursor, Zed, Windsurf, or Antigravity. You can also add your own editor.
@@ -10,9 +10,7 @@ Open notes and folders from Obsidian in VS Code, Cursor, Zed, Windsurf, or Antig
 
 ## Install
 
-1. In Obsidian, go to **Settings → Community plugins → Browse**.
-2. Search for **Open in Editor**.
-3. Select **Install**, then **Enable**.
+In Obsidian, go to **Settings → Community plugins → Browse**, search for **Open in Editor**, then select **Install** and **Enable**.
 
 ## Open a note or folder
 
