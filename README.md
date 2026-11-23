@@ -4,26 +4,24 @@
   <img src="assets/cover.png" alt="Open in Editor cover showing the external editor menu">
 </p>
 
-Open an Obsidian note or folder in VS Code, Cursor, Zed, Windsurf, or Antigravity from the right-click menu. Use your editor’s search, multi-cursor editing, or bulk replace on files in your vault.
+Open notes and folders from Obsidian in VS Code, Cursor, Zed, Windsurf, or Antigravity. You can also add your own editor.
 
 **Obsidian desktop · macOS, Windows, and Linux**
 
-[Download the latest release](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
-
 ## Install
 
-1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release.
-2. Copy them into `<vault>/.obsidian/plugins/open-in-editor/`.
-3. Reload Obsidian and enable **Open in Editor** under **Settings → Community plugins**.
+In Obsidian, go to **Settings → Community plugins → Browse**, search for **Open in Editor**, then select **Install** and **Enable**.
 
-## Open files and folders
+## Open a note or folder
 
-Enable an editor under **Settings → Open in Editor**. Then right-click a file or folder in the file explorer, or an open note’s tab, and choose **Open in [editor name]**. You can also open the current file from the command palette. If you just enabled an editor, reload the plugin to refresh its palette commands.
+1. Go to **Settings → Open in Editor** and enable the editors you use.
+2. Right-click a note or folder in the file explorer, or an open note’s tab.
+3. Choose **Open in** followed by the editor name.
 
-Enable **Group** for an editor to move its entry into the **Open in External Editor** submenu. To use another editor, choose **Add Custom Editor** and enter its application name on macOS or its executable command on Windows or Linux. For a custom editor on Windows, point to the .exe file.
+Enable **Group** to put an editor under **Open in External Editor**. To open the current note from the command palette, search for **Open current file in**. Reload the plugin after enabling an editor to refresh its palette commands.
 
-## Development
+## Add a custom editor
 
-Run `bun install` and `bun run build`. The build writes `dist/main.js`. To test it in a vault, follow the install steps using that file and the local manifest and stylesheet.
+Choose **Add Custom Editor** in the plugin settings. Enter the application name on macOS, the path to its `.exe` on Windows, or its executable command on Linux. Then enable the editor.
 
-[Report an issue](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/issues) · [MIT license](LICENSE)
+[Manual install and development](DEVELOPMENT.md) · [Report an issue](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/issues) · [MIT license](LICENSE)
