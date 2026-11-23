@@ -2,6 +2,8 @@
 
 # 🚀 Open in Editor
 
+<img src="assets/cover.png" alt="Open in Editor cover showing the external editor menu">
+
 **Open files and folders from Obsidian in your favorite external code editor — one right-click away.**
 
 [![Release](https://img.shields.io/github/v/release/PriyanshuMallick/Obsidian_open_in_editor?style=flat-square&label=release)](https://github.com/PriyanshuMallick/Obsidian_open_in_editor/releases/latest)
