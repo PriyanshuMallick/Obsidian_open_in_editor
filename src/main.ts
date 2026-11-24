@@ -271,23 +271,30 @@ class OpenInEditorSettingTab extends PluginSettingTab {
 				name: editor.name,
 				aliases: ["Enable editor", "Group editor"],
 				render: (setting: Setting) => {
-					setting.setClass("open-in-editor-editor-row");
-					this.createBuiltInEditorSetting(setting.settingEl.createDiv("open-in-editor-settings"), editor);
+					this.createBuiltInEditorSetting(this.prepareEditorRow(setting), editor);
 				},
 			})),
 			{
 				name: "Add custom editor",
-				render: (setting: Setting) => this.addCustomEditorButton(setting),
+				render: (setting: Setting) => {
+					setting.controlEl.empty();
+					this.addCustomEditorButton(setting);
+				},
 			},
 			...this.plugin.settings.customEditors.map((editor, index) => ({
 				name: `Custom editor: ${editor.name} (${index + 1})`,
 				aliases: ["Display name", "App name", "Editor command", "Enable editor", "Group editor", "Delete editor"],
 				render: (setting: Setting) => {
-					setting.setClass("open-in-editor-editor-row");
-					this.createCustomEditorSetting(setting.settingEl.createDiv("open-in-editor-settings"), index);
+					this.createCustomEditorSetting(this.prepareEditorRow(setting), index);
 				},
 			})),
 		];
+	}
+
+	private prepareEditorRow(setting: Setting): HTMLElement {
+		setting.setClass("open-in-editor-editor-row");
+		setting.settingEl.querySelector(":scope > .open-in-editor-settings")?.remove();
+		return setting.settingEl.createDiv("open-in-editor-settings");
 	}
 
 	private refreshSettings() {

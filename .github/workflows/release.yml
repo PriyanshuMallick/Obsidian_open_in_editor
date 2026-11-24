@@ -10,10 +10,19 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun test
   check:
+    needs: test
     if: github.ref_type != 'tag'
     uses: PriyanshuMallick/obsidian_extentions_template/.github/workflows/obsidian.yml@main
   release:
+    needs: test
     if: github.ref_type == 'tag'
     uses: PriyanshuMallick/obsidian_extentions_template/.github/workflows/obsidian.yml@main
     permissions:
